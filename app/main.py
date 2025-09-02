@@ -1,6 +1,7 @@
 # app/main.py
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 from agno.agent import Agent
 from agno.models.openai import OpenAIChat
 from agno.tools.duckduckgo import DuckDuckGoTools
@@ -9,29 +10,21 @@ import os
 
 app = FastAPI(title="editor-team")
 
+# CORS desde env (o * por defecto en dev)
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("CORS_ORIGINS", "*")],
+    allow_origins=[o.strip() for o in CORS_ORIGINS],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Verificación temprana de credenciales
-if not os.getenv("OPENAI_API_KEY"):
-    raise RuntimeError("Falta OPENAI_API_KEY en el entorno.")
-
-OPENAI_TIMEOUT = float(os.getenv("OPENAI_TIMEOUT", "45"))
-OPENAI_MAX_RETRIES = int(os.getenv("OPENAI_MAX_RETRIES", "2"))
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")  # opcional por env
 
 searcher = Agent(
     name="Searcher",
     role="Busca y prioriza URLs reputadas.",
-    model=OpenAIChat(
-        id="gpt-4o",
-        # api_key=os.getenv("OPENAI_API_KEY"),  # opcional; si no, lee del entorno
-        request_timeout=OPENAI_TIMEOUT,
-        max_retries=OPENAI_MAX_RETRIES,
-    ),
+    model=OpenAIChat(id=OPENAI_MODEL),   # <-- sin request_timeout / max_retries / client
     tools=[DuckDuckGoTools()],
     instructions=[
         "Genera 3 términos de búsqueda.",
@@ -45,12 +38,7 @@ searcher = Agent(
 writer = Agent(
     name="Writer",
     role="Redacta artículo estilo NYT con fuentes citadas.",
-    model=OpenAIChat(
-        id="gpt-4o",
-        # api_key=os.getenv("OPENAI_API_KEY"),  # opcional
-        request_timeout=OPENAI_TIMEOUT,
-        max_retries=OPENAI_MAX_RETRIES,
-    ),
+    model=OpenAIChat(id=OPENAI_MODEL),   # <-- igual aquí
     tools=[Newspaper4kTools()],
     instructions=[
         "Lee URLs con `read_article`.",
@@ -62,18 +50,22 @@ writer = Agent(
     markdown=True,
 )
 
+class RunTeamIn(BaseModel):
+    topic: str = Field(default="IA generativa en PyMEs LATAM", min_length=3)
+    max_urls: int = Field(default=8, ge=1, le=12)
+
 @app.get("/")
 def root():
-    return {"ok": True, "service": "editor-team", "docs": "/docs", "health": "/health"}
+    return {"service": "editor-team", "docs": "/docs", "health": "/health"}
 
 @app.get("/health")
 def health():
     return {"ok": True}
 
 @app.post("/run-team")
-async def run_team(payload: dict):
-    topic = payload.get("topic", "IA generativa en PyMEs LATAM")
-    max_urls = int(payload.get("max_urls", 8))
+async def run_team(payload: RunTeamIn):
+    topic = payload.topic
+    max_urls = payload.max_urls
 
     # 1) Buscar URLs
     search_prompt = f"Tema: {topic}\nDevuelve solo URLs, una por línea, sin comentarios."
