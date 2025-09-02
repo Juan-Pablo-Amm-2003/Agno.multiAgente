@@ -6,3 +6,6 @@ openai
 newspaper4k
 lxml_html_clean
 ddgs
+beautifulsoup4
+lxml
+ddgs
