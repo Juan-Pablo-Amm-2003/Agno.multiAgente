@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+httpx
+agno
+openai
+newspaper4k
+lxml_html_clean
+ddgs

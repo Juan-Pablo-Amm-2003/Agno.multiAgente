@@ -1,0 +1,32 @@
+services:
+  searcher:
+    build: .
+    command: uvicorn app.agents.searcher:app --host 0.0.0.0 --port 8001
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+
+  writer:
+    build: .
+    command: uvicorn app.agents.writer:app --host 0.0.0.0 --port 8002
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    ports:
+      - "8002:8002"
+    restart: unless-stopped
+
+  editor:
+    build: .
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      SEARCHER_URL: http://searcher:8001/run
+      WRITER_URL:   http://writer:8002/run
+    ports:
+      - "8000:8000"
+    depends_on:
+      - searcher
+      - writer
+    restart: unless-stopped

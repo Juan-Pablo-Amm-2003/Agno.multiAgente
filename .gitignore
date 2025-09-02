@@ -1,0 +1,56 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.egg-info/
+*.log
+
+# Entorno virtual local
+.venv/
+env/
+venv/
+
+# =========================
+# Docker
+# =========================
+# Evita incluir volúmenes o configuraciones locales
+.docker/
+docker-compose.override.yml
+
+# =========================
+# Sistemas Operativos
+# =========================
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# =========================
+# Editores
+# =========================
+# VSCode
+.vscode/
+.history/
+
+# PyCharm / JetBrains
+.idea/
+
+# =========================
+# Otros
+# =========================
+# Archivos temporales
+*.tmp
+*.swp
+*.swo
+
+# Archivos de credenciales (por seguridad nunca subir claves)
+.env
+*.env
