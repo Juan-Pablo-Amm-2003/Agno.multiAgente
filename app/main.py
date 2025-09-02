@@ -5,7 +5,6 @@ from agno.agent import Agent
 from agno.models.openai import OpenAIChat
 from agno.tools.duckduckgo import DuckDuckGoTools
 from agno.tools.newspaper4k import Newspaper4kTools
-from openai import OpenAI  # <-- nuevo
 import os
 
 app = FastAPI(title="editor-team")
@@ -17,18 +16,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- NEW: validar API key al boot ---
+# Verificación temprana de credenciales
 if not os.getenv("OPENAI_API_KEY"):
     raise RuntimeError("Falta OPENAI_API_KEY en el entorno.")
 
-# --- NEW: cliente OpenAI con timeout controlado ---
-OPENAI_TIMEOUT = float(os.getenv("OPENAI_TIMEOUT", "45"))  # segundos
-openai_client = OpenAI(timeout=OPENAI_TIMEOUT)
+OPENAI_TIMEOUT = float(os.getenv("OPENAI_TIMEOUT", "45"))
+OPENAI_MAX_RETRIES = int(os.getenv("OPENAI_MAX_RETRIES", "2"))
 
 searcher = Agent(
     name="Searcher",
     role="Busca y prioriza URLs reputadas.",
-    model=OpenAIChat(id="gpt-4o", client=openai_client),   # <-- aquí
+    model=OpenAIChat(
+        id="gpt-4o",
+        # api_key=os.getenv("OPENAI_API_KEY"),  # opcional; si no, lee del entorno
+        request_timeout=OPENAI_TIMEOUT,
+        max_retries=OPENAI_MAX_RETRIES,
+    ),
     tools=[DuckDuckGoTools()],
     instructions=[
         "Genera 3 términos de búsqueda.",
@@ -42,7 +45,12 @@ searcher = Agent(
 writer = Agent(
     name="Writer",
     role="Redacta artículo estilo NYT con fuentes citadas.",
-    model=OpenAIChat(id="gpt-4o", client=openai_client),   # <-- aquí
+    model=OpenAIChat(
+        id="gpt-4o",
+        # api_key=os.getenv("OPENAI_API_KEY"),  # opcional
+        request_timeout=OPENAI_TIMEOUT,
+        max_retries=OPENAI_MAX_RETRIES,
+    ),
     tools=[Newspaper4kTools()],
     instructions=[
         "Lee URLs con `read_article`.",
